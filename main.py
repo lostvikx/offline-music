@@ -1,3 +1,10 @@
+# /// script
+# requires-python = ">=3.13"
+# dependencies = [
+#     "requests",
+# ]
+# ///
+
 import subprocess
 import requests
 from urllib.parse import urlencode
