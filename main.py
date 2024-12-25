@@ -5,9 +5,11 @@
 # ]
 # ///
 
+
 import subprocess
 import requests
 from urllib.parse import urlencode
+
 
 def fetch_yt_music_url(search_query):
     params = { "q": search_query }
@@ -111,6 +113,8 @@ def main():
     search_query = "Survivor - Eye of the Tiger"
     song_url = fetch_yt_music_url(search_query)
     print(f'Song URL: {song_url}')
+    download_song(song_url)
+    print(f'Download Complete: {search_query}')
 
 
 if __name__ == "__main__":
