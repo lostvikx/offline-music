@@ -2,17 +2,16 @@
 
 A simple python script to download music from a .csv file.
 
-## Dependencies
+## Prerequisite
 
 ```bash
 mkdir ~/Music/docs
-touch ~/Music/docs/music.csv
 ```
 
 ## Run Script
 
 ```bash
-uv run main.py ~/Music/docs/music.csv
+uv run main.py <path_to_music.csv>  # Example: ~/Music/docs/music.csv
 ```
 
 ## Valid CSV File

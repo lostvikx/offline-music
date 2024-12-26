@@ -17,8 +17,11 @@ import pandas as pd
 
 from urllib.parse import urlencode
 
-# TODO: Error handling.
-
+# TODO []: Better error handling.
+# TODO [*]: Download songs from a .csv file.
+# TODO []: Download a YouTube playlists.
+# TODO []: Download tables from a URL to a .csv file.
+# TODO []: Prompt a destination directory.
 
 def fetch_yt_music_url(search_query):
     print(f'Fetching URL For: {search_query}')
