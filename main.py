@@ -21,7 +21,7 @@ from urllib.parse import urlencode
 
 
 def fetch_yt_music_url(search_query):
-    print(f'Fetching URL: {search_query}')
+    print(f'Fetching URL For: {search_query}')
 
     params = { "q": search_query }
     encoded_query = urlencode(params)
@@ -108,7 +108,7 @@ def fetch_yt_music_url(search_query):
     if response.status_code != 200:
         print(f"Error: {response.status_code}\n{response.text}")
 
-    music_id = response.json()['contents']['tabbedSearchResultsRenderer']['tabs'][0]['tabRenderer']['content']['sectionListRenderer']['contents'][1]['musicShelfRenderer']['contents'][1]['musicResponsiveListItemRenderer']['playlistItemData']['videoId']
+    music_id = response.json()['contents']['tabbedSearchResultsRenderer']['tabs'][0]['tabRenderer']['content']['sectionListRenderer']['contents'][1]['musicShelfRenderer']['contents'][0]['musicResponsiveListItemRenderer']['overlay']['musicItemThumbnailOverlayRenderer']['content']['musicPlayButtonRenderer']['playNavigationEndpoint']['watchEndpoint']['videoId']
     
     song_url = f'https://music.youtube.com/watch?v={music_id}'
     return song_url
@@ -119,24 +119,26 @@ def download_song(song_url):
     subprocess.run(command)
 
 
+def fetch_urls(row):
+    try:
+        search_query = f"{row.loc['Artist']} - {row.loc['Song']}"
+    except KeyError:
+        search_query = f"{row.iloc[0]} - {row.iloc[1]}"
+    except Exception as error:
+        exit(f'Something went wrong: {error}')
+
+    yt_music_url = fetch_yt_music_url(search_query)
+
+    time.sleep(10)
+    return yt_music_url
+
+
 def main():
     if len(sys.argv) != 2:
         exit('Please add the argument.')
 
     csv_file = sys.argv[1]
     music_library = pd.read_csv(csv_file)
-
-    def fetch_urls(row):
-        try:
-            search_query = f"{row.loc['Artist']} - {row.loc['Song']}"
-        except KeyError:
-            search_query = f"{row.iloc[0]} - {row.iloc[1]}"
-        except Exception as error:
-            exit(f'Something went wrong: {error}')
-
-        time.sleep(10)
-
-        return fetch_yt_music_url(search_query)
 
     if 'URL' not in music_library.columns:
         music_library['URL'] = np.nan
@@ -145,6 +147,16 @@ def main():
     music_library.to_csv(csv_file, index=False)
 
     print(music_library.head())
+
+    for (i, row) in music_library.iterrows():
+        print(f'Downloading: {row.iloc[0]} - {row.iloc[1]}')
+
+        song_url = row.loc['URL']
+        download_song(song_url)
+
+        time.sleep(30)
+    
+    print('Download Complete.')
 
 
 if __name__ == "__main__":
