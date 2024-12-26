@@ -1,14 +1,20 @@
 # /// script
 # requires-python = ">=3.13"
 # dependencies = [
+#     "pandas",
 #     "requests",
 # ]
 # ///
 
-
+import sys
 import subprocess
 import requests
+import time
+import pandas as pd
+
 from urllib.parse import urlencode
+
+# TODO: Error handling.
 
 
 def fetch_yt_music_url(search_query):
@@ -110,11 +116,29 @@ def download_song(song_url):
 
 
 def main():
-    search_query = "Survivor - Eye of the Tiger"
-    song_url = fetch_yt_music_url(search_query)
-    print(f'Song URL: {song_url}')
-    download_song(song_url)
-    print(f'Download Complete: {search_query}')
+    if len(sys.argv) != 2:
+        exit('Please add the argument.')
+
+    csv_file = sys.argv[1]
+    music_library = pd.read_csv(csv_file)
+
+    for (i, row) in music_library.iterrows():
+        try:
+            search_query = f"{row.loc['Artist']} - {row.loc['Song']}"
+        except KeyError:
+            search_query = f"{row.iloc[0]} - {row.iloc[1]}"
+        except Exception as error:
+            exit(f'Something went wrong: {error}')
+        
+        song_url = fetch_yt_music_url(search_query)
+        print(f'Song URL: {song_url}')
+
+        time.sleep(5)
+
+        download_song(song_url)
+        print(f'Download Complete: {search_query}')
+
+        time.sleep(55)
 
 
 if __name__ == "__main__":
