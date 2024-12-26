@@ -1,6 +1,7 @@
 # /// script
 # requires-python = ">=3.13"
 # dependencies = [
+#     "numpy",
 #     "pandas",
 #     "requests",
 # ]
@@ -10,6 +11,8 @@ import sys
 import subprocess
 import requests
 import time
+
+import numpy as np
 import pandas as pd
 
 from urllib.parse import urlencode
@@ -18,6 +21,8 @@ from urllib.parse import urlencode
 
 
 def fetch_yt_music_url(search_query):
+    print(f'Fetching URL: {search_query}')
+
     params = { "q": search_query }
     encoded_query = urlencode(params)
 
@@ -106,7 +111,6 @@ def fetch_yt_music_url(search_query):
     music_id = response.json()['contents']['tabbedSearchResultsRenderer']['tabs'][0]['tabRenderer']['content']['sectionListRenderer']['contents'][1]['musicShelfRenderer']['contents'][1]['musicResponsiveListItemRenderer']['playlistItemData']['videoId']
     
     song_url = f'https://music.youtube.com/watch?v={music_id}'
-    del response    
     return song_url
 
 
@@ -122,23 +126,25 @@ def main():
     csv_file = sys.argv[1]
     music_library = pd.read_csv(csv_file)
 
-    for (i, row) in music_library.iterrows():
+    def fetch_urls(row):
         try:
             search_query = f"{row.loc['Artist']} - {row.loc['Song']}"
         except KeyError:
             search_query = f"{row.iloc[0]} - {row.iloc[1]}"
         except Exception as error:
             exit(f'Something went wrong: {error}')
-        
-        song_url = fetch_yt_music_url(search_query)
-        print(f'Song URL: {song_url}')
 
-        time.sleep(5)
+        time.sleep(10)
 
-        download_song(song_url)
-        print(f'Download Complete: {search_query}')
+        return fetch_yt_music_url(search_query)
 
-        time.sleep(55)
+    if 'URL' not in music_library.columns:
+        music_library['URL'] = np.nan
+
+    music_library['URL'] = music_library.apply(lambda row: fetch_urls(row) if pd.isna(row['URL']) else row['URL'], axis=1) 
+    music_library.to_csv(csv_file, index=False)
+
+    print(music_library.head())
 
 
 if __name__ == "__main__":
