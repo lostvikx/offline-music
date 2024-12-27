@@ -1,14 +1,17 @@
 # /// script
 # requires-python = ">=3.13"
 # dependencies = [
+#     "lxml",
 #     "numpy",
 #     "pandas",
 #     "requests",
 # ]
 # ///
 
+import os
 import sys
 import subprocess
+import random
 import requests
 import time
 
@@ -17,11 +20,11 @@ import pandas as pd
 
 from urllib.parse import urlencode
 
-# TODO []: Better error handling.
+# TODO []: Error handling.
 # TODO [*]: Download songs from a .csv file.
-# TODO []: Download a YouTube playlists.
-# TODO []: Download tables from a URL to a .csv file.
-# TODO []: Prompt a destination directory.
+# TODO [*]: Download a YouTube playlists.
+# TODO [*]: Download tables from a URL to a .csv file.
+# TODO [*]: Prompt a destination directory.
 
 def fetch_yt_music_url(search_query):
     print(f'Fetching URL For: {search_query}')
@@ -111,14 +114,19 @@ def fetch_yt_music_url(search_query):
     if response.status_code != 200:
         print(f"Error: {response.status_code}\n{response.text}")
 
-    music_id = response.json()['contents']['tabbedSearchResultsRenderer']['tabs'][0]['tabRenderer']['content']['sectionListRenderer']['contents'][1]['musicShelfRenderer']['contents'][0]['musicResponsiveListItemRenderer']['overlay']['musicItemThumbnailOverlayRenderer']['content']['musicPlayButtonRenderer']['playNavigationEndpoint']['watchEndpoint']['videoId']
+    try:
+        music_id = response.json()['contents']['tabbedSearchResultsRenderer']['tabs'][0]['tabRenderer']['content']['sectionListRenderer']['contents'][1]['musicShelfRenderer']['contents'][0]['musicResponsiveListItemRenderer']['overlay']['musicItemThumbnailOverlayRenderer']['content']['musicPlayButtonRenderer']['playNavigationEndpoint']['watchEndpoint']['videoId']
+    except KeyError as error:
+        print('Could not find the song URL.')
+        return np.nan
     
     song_url = f'https://music.youtube.com/watch?v={music_id}'
     return song_url
 
 
-def download_song(song_url):
-    command = ['yt-dlp', "--config-locations", "~/.config/yt-dlp/music-config.conf", song_url]
+def download_song(song_url, dir_name):
+    music_dir_path = os.path.join('~/Music', dir_name, f"%(title)s.%(ext)s")
+    command = ["yt-dlp", "--config-locations", "~/.config/yt-dlp/music-config.conf", song_url, "-o", music_dir_path]
     subprocess.run(command)
 
 
@@ -132,16 +140,21 @@ def fetch_urls(row):
 
     yt_music_url = fetch_yt_music_url(search_query)
 
-    time.sleep(10)
+    time.sleep(10 + random.randint(1, 10))
     return yt_music_url
 
 
-def main():
-    if len(sys.argv) != 2:
-        exit('Please add the argument.')
+def download_from_csv(csv_file):
+    try:
+        music_library = pd.read_csv(csv_file)
+    except Exception as error:
+        exit(f'Error in parsing csv file: {error}')
+    
+    print(f"Please verify your table:\n\n{music_library.head(3)}\n")
 
-    csv_file = sys.argv[1]
-    music_library = pd.read_csv(csv_file)
+    # ans = input('Do you wish to continue with the download? [y/N] ').strip()
+    # if ans.lower() != 'y':
+    #     exit('Abort.')
 
     if 'URL' not in music_library.columns:
         music_library['URL'] = np.nan
@@ -149,16 +162,73 @@ def main():
     music_library['URL'] = music_library.apply(lambda row: fetch_urls(row) if pd.isna(row['URL']) else row['URL'], axis=1) 
     music_library.to_csv(csv_file, index=False)
 
-    print(music_library.head())
+    dir_name = input('Enter directory name: ').strip() or ''
+    dir_path = os.path.join('/', 'home', 'vik', 'Music', dir_name)
+    os.path.exists(dir_path)
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
 
     for (i, row) in music_library.iterrows():
-        print(f'Downloading: {row.iloc[0]} - {row.iloc[1]}')
 
         song_url = row.loc['URL']
-        download_song(song_url)
 
-        time.sleep(30)
+        if pd.isna(song_url):
+            print(f'Download Canceled: {row.iloc[0]} - {row.iloc[1]}')
+            continue
+        
+        print(f'Downloading: {row.iloc[0]} - {row.iloc[1]}')
+        download_song(song_url, dir_name)
+        time.sleep(10 + random.randint(1, 10))
+
+
+def download_from_playlist(playlist_url):
+    command = ['yt-dlp', "--config-locations", "~/.config/yt-dlp/music-config.conf", playlist_url]
+    subprocess.run(command)
+
+
+def extract_table(url):
+    """Extract tables from website: vgost.fandom.com"""
+    try:
+        tables = pd.read_html(url)
+    except Exception as error:
+        exit(f'Error in reading table in HTML: {error}')
     
+    if len(tables) > 1:
+        print('Ignoring the last table.')
+        tables = tables[:-1]
+
+    df = pd.concat(tables).reset_index(drop=True)
+    df = df.iloc[:, :-1]
+    df = df.drop_duplicates(df.columns[1])
+    df = df.dropna(axis=0)
+
+    file_name = input('Enter file name: ').strip()
+    df.to_csv(f'{file_name}.csv', index=False)
+
+    ans = input('Do you wish to download the music? [y/N] ').strip()
+    if ans.lower() != 'y':
+        exit('Abort.')
+
+    download_from_csv(f'{file_name}.csv')
+
+
+def main():
+    if len(sys.argv) != 3:
+        exit('Not enough arguments provided.\nSyntax: python main.py [csv|playlist|extract] <argument>')
+
+    command = sys.argv[1]
+    arg = sys.argv[2]
+
+    if command == 'csv':
+        download_from_csv(arg)
+    elif command == 'playlist':
+        download_from_playlist(arg)
+    elif command == 'extract':
+        extract_table(arg)
+    else:
+        exit('Invalid command.\nValid commands: [csv|playlist|extract].')
+    
+    print('---'*10)
     print('Download Complete.')
 
 
